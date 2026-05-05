@@ -1,0 +1,1883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <title>Dooley Family Tree</title>
+
+  <style>
+    :root {
+      --bg: #ece7df;
+      --card: #faf8f4;
+      --ink: #2f241d;
+      --brown: #9a6a3c;
+      --brown-dark: #6e4a2d;
+      --muted: #7b5a3d;
+      --node: #fffdf9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      overflow-x: auto;
+      touch-action: pan-x pan-y pinch-zoom;
+    }
+
+    header {
+      text-align: center;
+      padding: 10px 12px 6px;
+      background: var(--bg);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.6rem, 2.5vw, 3rem);
+      line-height: 1;
+      color: var(--brown-dark);
+    }
+
+    .subtitle {
+      margin-top: 5px;
+      font-size: clamp(0.62rem, 0.9vw, 1rem);
+      color: var(--muted);
+    }
+
+    .controls {
+      background: var(--bg);
+      padding: 14px 12px 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .tree-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tree-tabs button,
+    .search-panel button {
+      border: 2px solid var(--brown);
+      background: #fff8ed;
+      color: var(--brown-dark);
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .tree-tabs button:hover,
+    .tree-tabs button.active,
+    .search-panel button:hover {
+      background: var(--brown);
+      color: #fffdf9;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+    }
+
+    .search-panel {
+      display: none;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      width: min(900px, 96vw);
+    }
+
+    .search-panel.open {
+      display: flex;
+    }
+
+    .search-panel input {
+      width: min(430px, 90vw);
+      padding: 11px 14px;
+      border: 2px solid #dbc5ae;
+      border-radius: 999px;
+      background: #fffdf9;
+      color: var(--ink);
+      font-family: Arial, sans-serif;
+      font-size: 15px;
+    }
+
+    .hint {
+      width: 100%;
+      text-align: center;
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      font-family: Arial, sans-serif;
+    }
+
+    .viewport {
+      width: 100vw;
+      overflow: auto;
+      background: var(--card);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      touch-action: pan-x pan-y pinch-zoom;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .tree-wrap {
+      position: relative;
+      width: 4300px;
+      height: 2350px;
+      flex: 0 0 auto;
+      transform-origin: top center;
+      background: var(--card);
+      display: none;
+    }
+
+    .tree-wrap.active {
+      display: block;
+    }
+
+    svg.lines {
+      position: absolute;
+      inset: 0;
+      width: 4300px;
+      height: 2350px;
+      z-index: 1;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .line {
+      stroke: var(--brown);
+      stroke-width: 3;
+      fill: none;
+      stroke-linecap: square;
+    }
+
+    .person {
+      position: absolute;
+      z-index: 5;
+      border: 2.5px solid var(--brown);
+      background: var(--node);
+      border-radius: 18px;
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+      text-align: center;
+      padding: 14px 10px 10px;
+      cursor: pointer;
+      box-shadow: 0 3px 0 rgba(154,106,60,0.08);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .person:hover,
+    .person:focus {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 20px rgba(0,0,0,0.14);
+      background: #fff8ed;
+      outline: none;
+    }
+
+    .person .name {
+      font-size: 23px;
+      font-weight: 700;
+      line-height: 1.08;
+      display: block;
+    }
+
+    .person.small .name {
+      font-size: 20px;
+    }
+
+    .person.tiny .name {
+      font-size: 18px;
+    }
+
+    .custom-tree {
+      width: 100%;
+      min-height: 760px;
+      background: var(--card);
+      padding: 34px 18px 60px;
+      display: none;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    .custom-tree.active {
+      display: block;
+    }
+
+    .custom-tree h2 {
+      text-align: center;
+      color: var(--brown-dark);
+      margin: 0 0 8px;
+      font-size: clamp(1.6rem, 3vw, 2.5rem);
+    }
+
+    .custom-tree .note {
+      text-align: center;
+      color: var(--muted);
+      font-family: Arial, sans-serif;
+      margin: 0 auto 24px;
+      max-width: 900px;
+      line-height: 1.5;
+    }
+
+    .simple-tree {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      align-items: center;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    .tree-level {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 22px;
+      flex-wrap: wrap;
+      width: 100%;
+      position: relative;
+    }
+
+    .level-title {
+      width: 100%;
+      text-align: center;
+      font-size: 17px;
+      color: var(--muted);
+      font-family: Arial, sans-serif;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: -8px;
+    }
+
+    .tree-card {
+      width: 230px;
+      min-height: 90px;
+      background: var(--node);
+      border: 2.5px solid var(--brown);
+      border-radius: 18px;
+      padding: 14px;
+      text-align: center;
+      box-shadow: 0 3px 0 rgba(154,106,60,0.08);
+      cursor: pointer;
+    }
+
+    .tree-card:hover,
+    .tree-card:focus {
+      background: #fff8ed;
+      transform: translateY(-3px);
+      box-shadow: 0 12px 20px rgba(0,0,0,0.14);
+      outline: none;
+    }
+
+    .tree-card strong {
+      display: block;
+      font-size: 22px;
+      color: var(--ink);
+      line-height: 1.12;
+      white-space: pre-line;
+    }
+
+    .tree-card span {
+      display: block;
+      margin-top: 7px;
+      font-family: Arial, sans-serif;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .tree-card.small-card {
+      width: 190px;
+    }
+
+    .tree-card.tiny-card {
+      width: 170px;
+      min-height: 78px;
+    }
+
+    .empty-card {
+      max-width: 700px;
+      background: #f7efe6;
+      border: 1.5px dashed var(--brown);
+      border-radius: 18px;
+      padding: 16px;
+      color: var(--muted);
+      font-family: Arial, sans-serif;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .sibling-list-wrap {
+      width: min(1100px, 96vw);
+      margin: 0 auto;
+    }
+
+    .sibling-order-note {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      color: var(--muted);
+      margin: 0 0 14px;
+      font-size: 14px;
+    }
+
+    .sibling-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sibling-list-item {
+      width: 100%;
+    }
+
+    .sibling-button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border: 2px solid var(--brown);
+      background: #fffdf9;
+      color: var(--ink);
+      border-radius: 18px;
+      padding: 14px 18px;
+      cursor: pointer;
+      text-align: left;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+
+    .sibling-button:hover,
+    .sibling-button:focus {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 20px rgba(0,0,0,0.14);
+      background: #fff8ed;
+      outline: none;
+    }
+
+    .sibling-rank {
+      min-width: 74px;
+      text-align: center;
+      border-radius: 999px;
+      border: 2px solid var(--brown);
+      padding: 7px 10px;
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--brown-dark);
+      background: #f7efe6;
+    }
+
+    .sibling-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .sibling-name {
+      font-size: 23px;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.15;
+    }
+
+    .sibling-position {
+      font-family: Arial, sans-serif;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .sibling-badge {
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .sibling-badge.oldest,
+    .sibling-badge.youngest {
+      background: #efe1cf;
+      color: var(--brown-dark);
+    }
+
+    .branch-panel {
+      display: none;
+      margin-top: 10px;
+      margin-left: 30px;
+      padding: 16px;
+      background: #fffdf9;
+      border: 2px solid #dbc5ae;
+      border-radius: 18px;
+    }
+
+    .branch-panel.open {
+      display: block;
+    }
+
+    .choice-list {
+      width: min(900px, 96vw);
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .choice-button {
+      width: 100%;
+      border: 2px solid var(--brown);
+      background: #fffdf9;
+      color: var(--ink);
+      border-radius: 18px;
+      padding: 14px 18px;
+      cursor: pointer;
+      text-align: left;
+      font-family: Georgia, "Times New Roman", serif;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+
+    .choice-button:hover,
+    .choice-button:focus {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 20px rgba(0,0,0,0.14);
+      background: #fff8ed;
+      outline: none;
+    }
+
+    .choice-name {
+      display: block;
+      font-size: 23px;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.15;
+    }
+
+    .choice-detail {
+      display: block;
+      margin-top: 6px;
+      font-family: Arial, sans-serif;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(37, 28, 21, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      padding: 18px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: min(820px, 96vw);
+      max-height: 88vh;
+      overflow: auto;
+      background: #fffdf9;
+      border: 2px solid var(--brown);
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      padding: 24px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      border-bottom: 1px solid #dbc5ae;
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+    }
+
+    .modal h2 {
+      margin: 0;
+      color: var(--brown-dark);
+      font-size: 34px;
+      line-height: 1.1;
+    }
+
+    .close {
+      border: 1.5px solid var(--brown);
+      background: #fff8ed;
+      color: var(--brown-dark);
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      font-size: 24px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      font-family: Arial, sans-serif;
+      margin-bottom: 18px;
+    }
+
+    .detail {
+      background: #f7efe6;
+      border-radius: 14px;
+      padding: 10px 12px;
+      min-height: 58px;
+    }
+
+    .label {
+      display: block;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .value {
+      font-size: 15px;
+      color: var(--ink);
+    }
+
+    .modal h3 {
+      margin: 18px 0 8px;
+      color: var(--brown-dark);
+      font-size: 20px;
+    }
+
+    .profile-list {
+      font-family: Arial, sans-serif;
+      margin: 8px 0 0;
+      padding-left: 20px;
+      line-height: 1.6;
+    }
+
+    .profile-list a {
+      color: #3f6b8f;
+      font-weight: 700;
+    }
+
+    @media (max-width: 720px) {
+      .details-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .modal h2 {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Dooley Family Tree</h1>
+    <div class="subtitle">Click any name to view their details. Use the tabs below to explore the main tree, sibling branches, or your own personal tree.</div>
+  </header>
+
+  <nav class="controls" aria-label="Family tree views">
+    <div class="tree-tabs">
+      <button type="button" class="active" data-view="main" onclick="showView('main')">Main Tree</button>
+      <button type="button" data-view="juliaSiblings" onclick="showView('juliaSiblings')">Julia's Siblings</button>
+      <button type="button" data-view="jackSiblings" onclick="showView('jackSiblings')">Jack's Siblings</button>
+      <button type="button" data-view="personal" onclick="showView('personal')">Personal Tree Search</button>
+    </div>
+
+    <div class="search-panel" id="searchPanel">
+      <input id="personalNameInput" type="text" placeholder="Type your name, e.g. Lauren Dwyer" />
+      <button type="button" onclick="renderPersonalTreeFromInput()">Show Personal Tree</button>
+      <p class="hint">This only uses names and relationships already in the original data.</p>
+    </div>
+  </nav>
+
+  <main class="viewport" id="viewport">
+    <section class="tree-wrap active" id="tree">
+      <svg class="lines" viewBox="0 0 4300 2350" aria-hidden="true">
+        <path class="line" d="M380 500 H520 M450 500 V720" />
+        <path class="line" d="M1510 290 H1610 M1560 290 V470" />
+        <path class="line" d="M2360 290 H2460 M2410 290 V470" />
+        <path class="line" d="M1710 535 H2260 M1985 535 V720" />
+        <path class="line" d="M590 772 H1845 M1218 772 V960" />
+
+        <path class="line" d="M340 960 H3500" />
+        <path class="line" d="M340 960 V1035 M1120 960 V1035 M1900 960 V1035 M2680 960 V1035 M3500 960 V1035" />
+
+        <path class="line" d="M340 1135 V1235 M120 1235 H560 M120 1235 V1325 M340 1235 V1325 M560 1235 V1325" />
+        <path class="line" d="M120 1410 V1545" />
+
+        <path class="line" d="M1120 1135 V1235 M830 1235 H1410 M830 1235 V1325 M1120 1235 V1325 M1410 1235 V1325" />
+        <path class="line" d="M830 1410 V1510 M700 1510 H960 M700 1510 V1590 M960 1510 V1590" />
+        <path class="line" d="M1120 1410 V1700 M990 1700 H1250 M990 1700 V1780 M1250 1700 V1780" />
+        <path class="line" d="M1410 1410 V1510 M1280 1510 H1700 M1280 1510 V1590 M1490 1510 V1590 M1700 1510 V1590" />
+
+        <path class="line" d="M1900 1135 V1235 M1660 1235 H2140 M1660 1235 V1325 M1900 1235 V1325 M2140 1235 V1325" />
+
+        <path class="line" d="M2680 1135 V1235 M2560 1235 H2800 M2560 1235 V1325 M2800 1235 V1325" />
+
+        <path class="line" d="M3500 1135 V1235 M3170 1235 H3830 M3170 1235 V1325 M3390 1235 V1325 M3610 1235 V1325 M3830 1235 V1325" />
+        <path class="line" d="M3170 1410 V1545 M3390 1410 V1545" />
+      </svg>
+    </section>
+
+    <section class="custom-tree" id="customTree"></section>
+  </main>
+
+  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalName">
+    <article class="modal">
+      <div class="modal-header">
+        <h2 id="modalName"></h2>
+        <button class="close" type="button" aria-label="Close" onclick="closeModal()">×</button>
+      </div>
+
+      <div class="details-grid" id="detailsGrid"></div>
+
+      <h3 id="parentsHeading" style="display:none;">Parents</h3>
+      <ul class="profile-list" id="parentsList" style="display:none;"></ul>
+
+      <h3 id="spouseHeading" style="display:none;">Spouse</h3>
+      <ul class="profile-list" id="spouseList" style="display:none;"></ul>
+
+      <h3 id="siblingsHeading" style="display:none;">Siblings</h3>
+      <ul class="profile-list" id="siblingsList" style="display:none;"></ul>
+
+      <h3 id="childrenHeading" style="display:none;">Children</h3>
+      <ul class="profile-list" id="childrenList" style="display:none;"></ul>
+
+      <h3>Records and links</h3>
+      <ul class="profile-list" id="recordsList"></ul>
+    </article>
+  </div>
+
+  <script>
+    const people = [
+      {
+        id: "john-dooley-sr",
+        name: "John\nDooley",
+        x: 1260,
+        y: 240,
+        w: 250,
+        h: 100,
+        lived: "Coolrain",
+        occupation: "Farmer",
+        parents: ["Michael Dooley (farmer)"],
+        spouse: "Maria Lawlor",
+        children: ["James Dooley"]
+      },
+      {
+        id: "maria-lawlor",
+        name: "Maria\nLawlor",
+        x: 1610,
+        y: 225,
+        w: 250,
+        h: 135,
+        parents: ["James Lalor (farmer)"],
+        spouse: "John Dooley",
+        marriageDate: "4 October 1877",
+        children: ["James Dooley"],
+        records: [
+          { label: "Marriage record", url: "https://www.irishgenealogy.ie/view/?record_id=cima-2912810" }
+        ]
+      },
+      {
+        id: "eliza-byrne",
+        name: "Eliza\nByrne",
+        x: 2110,
+        y: 225,
+        w: 250,
+        h: 135,
+        birthday: "1852 ??",
+        bornIn: "County Dublin",
+        lived: "Coolrain",
+        spouse: "Theobald Hickson",
+        children: [
+          "Joseph Hickson (c.1885, age 16 in 1901 census)",
+          "Robert Hickson (c.1887, age 14 in 1901 census)",
+          "Theobald Hickson Jr (c.1889, age 12 in 1901 census)",
+          "Sissie Hickson (c.1891, age 10 in 1901 census)",
+          "Josephine Hickson (21 Jul 1892, Coolrain, age 8 in 1901 census)"
+        ],
+        records: [
+          { label: "1901 census", url: "https://www.census.nationalarchives.ie/reels/nai003823527/" }
+        ]
+      },
+      {
+        id: "theobald-hickson",
+        name: "Theobald\nHickson",
+        x: 2460,
+        y: 215,
+        w: 290,
+        h: 155,
+        birthday: "1827 ??",
+        bornIn: "County Kerry",
+        lived: "Coolrain",
+        death: "11th September 1901",
+        deathLocation: "Coolrain",
+        deathReason: "Aortic regurgitation",
+        occupation: "Police Constable, R.I.C.",
+        spouse: "Eliza Byrne",
+        children: [
+          "Joseph Hickson (c.1885, age 16 in 1901 census)",
+          "Robert Hickson (c.1887, age 14 in 1901 census)",
+          "Theobald Hickson Jr (c.1889, age 12 in 1901 census)",
+          "Sissie Hickson (c.1891, age 10 in 1901 census)",
+          "Josephine Hickson (21 Jul 1892, Coolrain, age 8 in 1901 census)"
+        ],
+        records: [
+          { label: "Death record", url: "https://www.irishgenealogy.ie/files/civil/deaths_returns/deaths_1901/05718/4613439.pdf" },
+          { label: "1901 census", url: "https://www.census.nationalarchives.ie/reels/nai003823527/" }
+        ]
+      },
+      {
+        id: "anne-oreilly",
+        name: "Anne\nO'Reilly",
+        x: 160,
+        y: 450,
+        w: 260,
+        h: 105,
+        spouse: "William Whelan",
+        children: ["Julia Dooley"]
+      },
+      {
+        id: "william-whelan",
+        name: "William\nWhelan",
+        x: 520,
+        y: 450,
+        w: 260,
+        h: 105,
+        spouse: "Anne O'Reilly",
+        children: ["Julia Dooley"]
+      },
+      {
+        id: "james-dooley",
+        name: "James\nDooley",
+        x: 1450,
+        y: 470,
+        w: 260,
+        h: 135,
+        birthday: "17th April 1881",
+        bornIn: "Offerlane, Co. Laois",
+        ageWhenMarried: "31",
+        lived: "Coolrain",
+        siblings: ["Sarah Dooley"],
+        parents: ["John Dooley", "Maria Lawlor"],
+        spouse: "Josephine Hickson",
+        children: [
+          "John Dooley, aka Jack (c.1914)",
+          "Joseph Dooley (c.1916, age 10 in 1926 census)",
+          "James Dooley (c.1916–1917, age 9 years 4 months in 1926 census)",
+          "Martin Dooley (c.1919, age 6 years 10 months in 1926 census)",
+          "Mary Teresa Dooley, aka Terry (c.1920, age 5 years 8 months in 1926 census)",
+          "Gertrude Dooley (c.1923, age 2 years 5 months in 1926 census)",
+          "William Dooley (c.1925, age 8 months in 1926 census)"
+        ],
+        records: [
+          { label: "Birth record", url: "https://www.irishgenealogy.ie/view/?record_id=e768beed6b-4854606" },
+          { label: "Marriage record to Josephine Hickson", url: "https://www.irishgenealogy.ie/view/?record_id=cima-1938693" }
+        ]
+      },
+      {
+        id: "josephine-hickson",
+        name: "Josephine\nHickson",
+        x: 2260,
+        y: 470,
+        w: 270,
+        h: 135,
+        birthday: "21 July 1892",
+        bornIn: "Coolrain",
+        lived: "Coolrain",
+        parents: ["Eliza Byrne", "Theobald Hickson"],
+        spouse: "James Dooley",
+        siblings: [
+          "Joseph Hickson (c.1885, age 16 in 1901 census)",
+          "Robert Hickson (c.1887, age 14 in 1901 census)",
+          "Theobald Hickson Jr (c.1889, age 12 in 1901 census)",
+          "Sissie Hickson (c.1891, age 10 in 1901 census)"
+        ],
+        children: [
+          "John Dooley, aka Jack (c.1914)",
+          "Joseph Dooley (c.1916, age 10 in 1926 census)",
+          "James Dooley (c.1916–1917, age 9 years 4 months in 1926 census)",
+          "Martin Dooley (c.1919, age 6 years 10 months in 1926 census)",
+          "Mary Teresa Dooley, aka Terry (c.1920, age 5 years 8 months in 1926 census)",
+          "Gertrude Dooley (c.1923, age 2 years 5 months in 1926 census)",
+          "William Dooley (c.1925, age 8 months in 1926 census)"
+        ],
+        records: [
+          { label: "Birth record", url: "https://www.irishgenealogy.ie/view/?record_id=e768beed6b-3560117" },
+          { label: "Marriage record to James Dooley", url: "https://www.irishgenealogy.ie/view/?record_id=cima-1938693" },
+          { label: "1901 census", url: "https://www.census.nationalarchives.ie/reels/nai003823527/" }
+        ]
+      },
+      {
+        id: "julia-dooley",
+        name: "Julia\nWhelan",
+        alsoKnownAs: "Julia Dooley",
+        x: 320,
+        y: 720,
+        w: 270,
+        h: 105,
+        parents: ["Anne O'Reilly", "William Whelan"],
+        spouse: "Jack Dooley",
+        children: ["Joan Dwyer", "Annette McCaul", "Paul Dooley", "John Dooley", "Seamus Dooley"],
+        bornIn: "Portlaoise",
+        siblings: [
+          "Patrick (Paddy) Whelan, deceased",
+          "Nellie, deceased",
+          "Sean Whelan, deceased",
+          "Aine, deceased",
+          "Elizabeth (Lula), deceased",
+          "Mary-Anne, deceased",
+          "William (Liam) Whelan, deceased",
+          "Claire, deceased",
+          "Margaret (Peggy), deceased"
+        ],
+        occupation: "Weaver in Worsted Mills, House wife, Avon sales lady, Tubberware sales lady, Cleaner in local secondary school, Cleaner in Portlaoise mental hospital, House-to-house publicity sample services (delivering samples of household products)"
+      },
+      {
+        id: "jack-dooley",
+        name: "John\nDooley",
+        alsoKnownAs: "Jack Dooley",
+        x: 1845,
+        y: 720,
+        w: 270,
+        h: 105,
+        birthday: "1914",
+        bornIn: "Coolrain",
+        lived: "Coolrain",
+        death: "1968",
+        deathLocation: "Portlaoise",
+        deathReason: "Stroke",
+        occupation: "Milk man, bus driver",
+        parents: ["James Dooley", "Josephine Hickson"],
+        siblings: [
+          "Joseph Dooley (c.1916, age 10 in 1926 census)",
+          "James Dooley (c.1916–1917, age 9 years 4 months in 1926 census)",
+          "Martin Dooley (c.1919, age 6 years 10 months in 1926 census)",
+          "Mary Teresa Dooley, aka Terry (c.1920, age 5 years 8 months in 1926 census)",
+          "Gertrude Dooley (c.1923, age 2 years 5 months in 1926 census)",
+          "William Dooley (c.1925, age 8 months in 1926 census)"
+        ],
+        spouse: "Julia Dooley",
+        children: ["Joan Dwyer", "Annette McCaul", "Paul Dooley", "John Dooley", "Seamus Dooley"],
+        records: [
+          { label: "Birth record", url: "https://www.irishgenealogy.ie/files/civil/birth_returns/births_1913/01430/1586553.pdf" }
+        ]
+      },
+      {
+        id: "joan-dwyer",
+        name: "Joan\nDwyer",
+        x: 230,
+        y: 1035,
+        w: 220,
+        h: 100,
+        parents: ["Julia Dooley", "Jack Dooley"],
+        siblings: ["Annette McCaul", "Paul Dooley", "John Dooley", "Seamus Dooley"],
+        children: ["Karen", "John", "Lauren"]
+      },
+      {
+        id: "annette-mccaul",
+        name: "Annette\nMcCaul",
+        x: 1010,
+        y: 1035,
+        w: 220,
+        h: 100,
+        parents: ["Julia Dooley", "Jack Dooley"],
+        siblings: ["Joan Dwyer", "Paul Dooley", "John Dooley", "Seamus Dooley"],
+        children: ["Deirdre", "Stuart", "Niamh"]
+      },
+      {
+        id: "paul-dooley",
+        name: "Paul\nDooley",
+        x: 1790,
+        y: 1035,
+        w: 220,
+        h: 100,
+        parents: ["Julia Dooley", "Jack Dooley"],
+        siblings: ["Joan Dwyer", "Annette McCaul", "John Dooley", "Seamus Dooley"],
+        children: ["Kirstyn", "Nicole", "Aislinn"]
+      },
+      {
+        id: "john-dooley",
+        name: "John\nDooley",
+        x: 2570,
+        y: 1035,
+        w: 220,
+        h: 100,
+        parents: ["Julia Dooley", "Jack Dooley"],
+        siblings: ["Joan Dwyer", "Annette McCaul", "Paul Dooley", "Seamus Dooley"],
+        children: ["Brian", "Megan"]
+      },
+      {
+        id: "seamus-dooley",
+        name: "Seamus\nDooley",
+        x: 3390,
+        y: 1035,
+        w: 220,
+        h: 100,
+        parents: ["Julia Dooley", "Jack Dooley"],
+        siblings: ["Joan Dwyer", "Annette McCaul", "Paul Dooley", "John Dooley"],
+        children: ["Jamie", "Jack", "Shauna", "Aaron"]
+      },
+      {
+        id: "karen",
+        name: "Karen",
+        x: 30,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["Joan Dwyer"],
+        siblings: ["John", "Lauren"],
+        children: ["Ethan"]
+      },
+      {
+        id: "john",
+        name: "John",
+        x: 250,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["Joan Dwyer"],
+        siblings: ["Karen", "Lauren"]
+      },
+      {
+        id: "lauren",
+        name: "Lauren",
+        x: 470,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["Joan Dwyer"],
+        siblings: ["Karen", "John"]
+      },
+      {
+        id: "deirdre",
+        name: "Deirdre",
+        x: 740,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["Annette McCaul"],
+        siblings: ["Stuart", "Niamh"],
+        children: ["Lily", "Molly"]
+      },
+      {
+        id: "stuart",
+        name: "Stuart",
+        x: 1030,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["Annette McCaul"],
+        siblings: ["Deirdre", "Niamh"],
+        children: ["Dylan", "Freya"]
+      },
+      {
+        id: "niamh",
+        name: "Niamh",
+        x: 1320,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["Annette McCaul"],
+        siblings: ["Deirdre", "Stuart"],
+        children: ["Oisin", "Saoirse", "Fiadh"]
+      },
+      {
+        id: "kirstyn",
+        name: "Kirstyn",
+        x: 1570,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["Paul Dooley"],
+        siblings: ["Nicole", "Aislinn"]
+      },
+      {
+        id: "nicole",
+        name: "Nicole",
+        x: 1810,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["Paul Dooley"],
+        siblings: ["Kirstyn", "Aislinn"]
+      },
+      {
+        id: "aislinn",
+        name: "Aislinn",
+        x: 2050,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["Paul Dooley"],
+        siblings: ["Kirstyn", "Nicole"]
+      },
+      {
+        id: "brian",
+        name: "Brian",
+        x: 2470,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["John Dooley"],
+        siblings: ["Megan"]
+      },
+      {
+        id: "megan",
+        name: "Megan",
+        x: 2710,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["John Dooley"],
+        siblings: ["Brian"]
+      },
+      {
+        id: "jamie",
+        name: "Jamie",
+        x: 3080,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["Seamus Dooley"],
+        siblings: ["Jack", "Shauna", "Aaron"],
+        children: ["Baby on the way"]
+      },
+      {
+        id: "jack-grandson",
+        name: "Jack",
+        x: 3300,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["Seamus Dooley"],
+        siblings: ["Jamie", "Shauna", "Aaron"],
+        children: ["Baby on the way"]
+      },
+      {
+        id: "shauna",
+        name: "Shauna",
+        x: 3520,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["Seamus Dooley"],
+        siblings: ["Jamie", "Jack", "Aaron"]
+      },
+      {
+        id: "aaron",
+        name: "Aaron",
+        x: 3740,
+        y: 1325,
+        w: 180,
+        h: 85,
+        size: "small",
+        parents: ["Seamus Dooley"],
+        siblings: ["Jamie", "Jack", "Shauna"]
+      },
+      {
+        id: "ethan",
+        name: "Ethan",
+        x: 40,
+        y: 1545,
+        w: 160,
+        h: 78,
+        size: "tiny",
+        parents: ["Karen"]
+      },
+      {
+        id: "lily",
+        name: "Lily",
+        x: 620,
+        y: 1590,
+        w: 160,
+        h: 78,
+        size: "tiny",
+        parents: ["Deirdre"],
+        siblings: ["Molly"]
+      },
+      {
+        id: "molly",
+        name: "Molly",
+        x: 880,
+        y: 1590,
+        w: 160,
+        h: 78,
+        size: "tiny",
+        parents: ["Deirdre"],
+        siblings: ["Lily"]
+      },
+      {
+        id: "dylan",
+        name: "Dylan",
+        x: 910,
+        y: 1780,
+        w: 160,
+        h: 78,
+        size: "tiny",
+        parents: ["Stuart"],
+        siblings: ["Freya"]
+      },
+      {
+        id: "freya",
+        name: "Freya",
+        x: 1170,
+        y: 1780,
+        w: 160,
+        h: 78,
+        size: "tiny",
+        parents: ["Stuart"],
+        siblings: ["Dylan"]
+      },
+      {
+        id: "oisin",
+        name: "Oisin",
+        x: 1200,
+        y: 1590,
+        w: 160,
+        h: 78,
+        size: "tiny",
+        parents: ["Niamh"],
+        siblings: ["Saoirse", "Fiadh"]
+      },
+      {
+        id: "saoirse",
+        name: "Saoirse",
+        x: 1410,
+        y: 1590,
+        w: 160,
+        h: 78,
+        size: "tiny",
+        parents: ["Niamh"],
+        siblings: ["Oisin", "Fiadh"]
+      },
+      {
+        id: "fiadh",
+        name: "Fiadh",
+        x: 1620,
+        y: 1590,
+        w: 160,
+        h: 78,
+        size: "tiny",
+        parents: ["Niamh"],
+        siblings: ["Oisin", "Saoirse"]
+      },
+      {
+        id: "jamie-baby",
+        name: "Baby\non the way",
+        x: 3080,
+        y: 1545,
+        w: 180,
+        h: 86,
+        size: "tiny",
+        parents: ["Jamie"]
+      },
+      {
+        id: "jack-baby",
+        name: "Baby\non the way",
+        x: 3300,
+        y: 1545,
+        w: 180,
+        h: 86,
+        size: "tiny",
+        parents: ["Jack"]
+      }
+    ];
+
+    const defaultProfile = {
+      birthday: "Add birthday",
+      bornIn: "Add birthplace",
+      ageWhenMarried: "Add age when married",
+      marriageDate: "Add marriage date",
+      lived: "Add where they lived",
+      death: "Add death date",
+      deathLocation: "Add death location",
+      deathReason: "Add death reason",
+      occupation: "Add occupation"
+    };
+
+    const tree = document.getElementById("tree");
+    const customTree = document.getElementById("customTree");
+    const searchPanel = document.getElementById("searchPanel");
+
+    function cleanName(value) {
+      return String(value || "")
+        .replace(/\n/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function normalizeName(value) {
+      return cleanName(value)
+        .toLowerCase()
+        .replace(/[^a-z0-9 ]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function displayName(person) {
+      return cleanName(person.name);
+    }
+
+    function makeNameHTML(name) {
+      return String(name).split("\n").map(line => `<span>${line}</span>`).join("");
+    }
+
+    function renderPeople() {
+      document.querySelectorAll(".person").forEach(el => el.remove());
+
+      people.forEach(person => {
+        const button = document.createElement("button");
+        button.className = `person ${person.size || ""}`.trim();
+        button.type = "button";
+        button.id = person.id;
+        button.style.left = `${person.x}px`;
+        button.style.top = `${person.y}px`;
+        button.style.width = `${person.w}px`;
+        button.style.minHeight = `${person.h}px`;
+        button.innerHTML = `<span class="name">${makeNameHTML(person.name)}</span>`;
+        button.addEventListener("click", () => openModal(person));
+        tree.appendChild(button);
+      });
+    }
+
+    function fitTreeToViewport() {
+      const treeWrap = document.querySelector(".tree-wrap");
+      const viewport = document.querySelector(".viewport");
+
+      if (treeWrap.classList.contains("active")) {
+        const isPhoneSize = window.innerWidth <= 900;
+
+        if (isPhoneSize) {
+          /* On phones, do NOT shrink the whole 4300px tree.
+             Shrinking makes the name text unreadable on iPhones.
+             Instead, keep the tree full-size and let users pan/zoom around it. */
+          treeWrap.style.transform = "none";
+          viewport.style.height = "75vh";
+          viewport.style.justifyContent = "flex-start";
+        } else {
+          const scale = window.innerWidth / 4300;
+          treeWrap.style.transform = `scale(${scale})`;
+          viewport.style.height = `${2350 * scale}px`;
+          viewport.style.justifyContent = "center";
+        }
+      } else {
+        treeWrap.style.transform = "scale(1)";
+        viewport.style.height = "auto";
+        viewport.style.justifyContent = "center";
+      }
+    }
+
+    function findPersonByName(name) {
+      const target = normalizeName(name);
+      if (!target) return null;
+
+      const exact = people.find(person => {
+        const main = normalizeName(person.name);
+        const known = normalizeName(person.alsoKnownAs || "");
+        return main === target || known === target;
+      });
+
+      if (exact) return exact;
+
+      const relaxed = people.find(person => {
+        const main = normalizeName(person.name);
+        const known = normalizeName(person.alsoKnownAs || "");
+        return target.includes(main) || (known && target.includes(known));
+      });
+
+      return relaxed || null;
+    }
+
+    function personNameMatchesValue(person, value) {
+      const target = normalizeName(value);
+      const main = normalizeName(person.name);
+      const known = normalizeName(person.alsoKnownAs || "");
+      return main === target || known === target;
+    }
+
+    function parentListIncludes(person, parent) {
+      if (!person || !person.parents || !parent) return false;
+      const parentNames = [displayName(parent), parent.alsoKnownAs || ""].map(normalizeName).filter(Boolean);
+      return person.parents.some(parentName => parentNames.includes(normalizeName(parentName)));
+    }
+
+    function findChildPerson(childName, parentPerson) {
+      const exactChildren = people.filter(person => {
+        return personNameMatchesValue(person, childName) && parentListIncludes(person, parentPerson);
+      });
+
+      if (exactChildren.length) return exactChildren[0];
+
+      const target = normalizeName(childName);
+      return people.find(person => {
+        const main = normalizeName(person.name);
+        const firstName = main.split(" ")[0];
+        return (main === target || firstName === target) && parentListIncludes(person, parentPerson);
+      }) || null;
+    }
+
+    function getBottomThreeGenerationPeople() {
+      const rootIds = ["joan-dwyer", "annette-mccaul", "paul-dooley", "john-dooley", "seamus-dooley"];
+      const result = [];
+      const seen = new Set();
+      let current = rootIds
+        .map(id => people.find(person => person.id === id))
+        .filter(Boolean);
+
+      for (let generation = 1; generation <= 3 && current.length; generation++) {
+        const next = [];
+
+        current.forEach(person => {
+          const key = person.id;
+          if (!seen.has(key)) {
+            seen.add(key);
+            result.push({ person, generation });
+          }
+
+          (person.children || []).forEach(childName => {
+            const child = findChildPerson(childName, person);
+            if (child) next.push(child);
+          });
+        });
+
+        current = next;
+      }
+
+      return result;
+    }
+
+    function findPersonalSearchMatches(name) {
+      const target = normalizeName(name);
+      if (!target) return [];
+
+      return getBottomThreeGenerationPeople().filter(({ person }) => {
+        const main = normalizeName(person.name);
+        const known = normalizeName(person.alsoKnownAs || "");
+        const firstName = main.split(" ")[0];
+        const knownFirstName = known ? known.split(" ")[0] : "";
+
+        return (
+          main === target ||
+          known === target ||
+          firstName === target ||
+          knownFirstName === target ||
+          target.includes(main) ||
+          (known && target.includes(known))
+        );
+      });
+    }
+
+    function getGenerationName(generation) {
+      if (generation === 1) return "Julia and Jack's child";
+      if (generation === 2) return "Julia and Jack's grandchild";
+      if (generation === 3) return "Julia and Jack's great-grandchild";
+      return "Family member";
+    }
+
+    function describePersonChoice(person, generation) {
+      const parts = [getGenerationName(generation)];
+      if (person.parents && person.parents.length) parts.push(`Parent(s): ${person.parents.join(", ")}`);
+      if (person.siblings && person.siblings.length) parts.push(`Sibling(s): ${person.siblings.join(", ")}`);
+      return parts.join(" · ");
+    }
+
+    function renderPersonalChoiceList(typedName, matches) {
+      customTree.innerHTML = "";
+
+      const heading = document.createElement("h2");
+      heading.textContent = `Which ${typedName} are you?`;
+      customTree.appendChild(heading);
+
+      const note = document.createElement("p");
+      note.className = "note";
+      note.textContent = "There is more than one matching name in the bottom three generations. Choose the correct person to build their personal tree.";
+      customTree.appendChild(note);
+
+      const list = document.createElement("div");
+      list.className = "choice-list";
+
+      matches.forEach(({ person, generation }) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "choice-button";
+        button.innerHTML = `
+          <span class="choice-name">${displayName(person)}</span>
+          <span class="choice-detail">${describePersonChoice(person, generation)}</span>
+        `;
+        button.addEventListener("click", () => renderPersonalTree(person));
+        list.appendChild(button);
+      });
+
+      customTree.appendChild(list);
+    }
+
+    function makeCard(personOrName, subtitle = "") {
+      const person = typeof personOrName === "string" ? findPersonByName(personOrName) : personOrName;
+      const label = person ? displayName(person) : cleanName(personOrName);
+      const sizeClass = person && person.size === "tiny" ? "tiny-card" : person && person.size === "small" ? "small-card" : "";
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `tree-card ${sizeClass}`.trim();
+      button.innerHTML = `<strong>${label}</strong>${subtitle ? `<span>${subtitle}</span>` : ""}`;
+
+      if (person) {
+        button.addEventListener("click", () => openModal(person));
+      }
+
+      return button;
+    }
+
+    function addLevel(parent, title, items, subtitle) {
+      const level = document.createElement("div");
+      level.className = "tree-level";
+
+      if (title) {
+        const heading = document.createElement("div");
+        heading.className = "level-title";
+        heading.textContent = title;
+        level.appendChild(heading);
+      }
+
+      items.forEach(item => level.appendChild(makeCard(item, subtitle || "")));
+      parent.appendChild(level);
+    }
+
+    function showView(view) {
+      document.querySelectorAll(".tree-tabs button").forEach(button => {
+        button.classList.toggle("active", button.dataset.view === view);
+      });
+
+      closeModal();
+      customTree.innerHTML = "";
+      searchPanel.classList.toggle("open", view === "personal");
+
+      if (view === "main") {
+        tree.classList.add("active");
+        customTree.classList.remove("active");
+        requestAnimationFrame(fitTreeToViewport);
+        return;
+      }
+
+      tree.classList.remove("active");
+      customTree.classList.add("active");
+
+      if (view === "juliaSiblings") renderSiblingTree("julia-dooley", "Julia's Siblings");
+      if (view === "jackSiblings") renderSiblingTree("jack-dooley", "Jack's Siblings");
+      if (view === "personal") renderPersonalIntro();
+
+      requestAnimationFrame(fitTreeToViewport);
+    }
+
+    function getOrderedSiblingGroup(person) {
+      if (!person) return [];
+
+      if (person.id === "julia-dooley") {
+        const ordered = [];
+        let insertedJulia = false;
+
+        (person.siblings || []).forEach(sibling => {
+          if (sibling === "Claire, deceased" && !insertedJulia) {
+            ordered.push(person);
+            insertedJulia = true;
+          }
+          ordered.push(sibling);
+        });
+
+        if (!insertedJulia) {
+          ordered.push(person);
+        }
+
+        return ordered;
+      }
+
+      if (person.id === "jack-dooley") {
+        return [person, ...(person.siblings || [])];
+      }
+
+      return [person, ...(person.siblings || [])];
+    }
+
+    function renderSiblingTree(personId, title) {
+      const person = people.find(item => item.id === personId);
+      const parents = person && person.parents ? person.parents : [];
+      const orderedSiblings = getOrderedSiblingGroup(person);
+      const personFirstName = person ? displayName(person).split(" ")[0] : "Person";
+
+      customTree.innerHTML = "";
+
+      const heading = document.createElement("h2");
+      heading.textContent = title;
+      customTree.appendChild(heading);
+
+      const note = document.createElement("p");
+      note.className = "note";
+      note.textContent = "Ordered from oldest to youngest using your original data. Click a name to reveal that sibling’s branch.";
+      customTree.appendChild(note);
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "simple-tree";
+      customTree.appendChild(wrapper);
+
+      if (parents.length) {
+        addLevel(wrapper, "Parents", parents);
+      }
+
+      const listWrap = document.createElement("div");
+      listWrap.className = "sibling-list-wrap";
+
+      const listTitle = document.createElement("div");
+      listTitle.className = "level-title";
+      listTitle.textContent = `${personFirstName} and siblings`;
+      listWrap.appendChild(listTitle);
+
+      const orderNote = document.createElement("p");
+      orderNote.className = "sibling-order-note";
+      orderNote.textContent = "Top of the list = oldest sibling · Bottom of the list = youngest sibling";
+      listWrap.appendChild(orderNote);
+
+      const list = document.createElement("ol");
+      list.className = "sibling-list";
+
+      const branchBlocks = [];
+
+      orderedSiblings.forEach((sibling, index) => {
+        const siblingPerson = typeof sibling === "string" ? findPersonByName(sibling) : sibling;
+        const siblingName = siblingPerson ? displayName(siblingPerson) : cleanName(sibling);
+        const children = siblingPerson && siblingPerson.children ? siblingPerson.children : [];
+
+        const item = document.createElement("li");
+        item.className = "sibling-list-item";
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "sibling-button";
+
+        const rank = document.createElement("span");
+        rank.className = "sibling-rank";
+        rank.textContent = `#${index + 1}`;
+
+        const main = document.createElement("div");
+        main.className = "sibling-main";
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "sibling-name";
+        nameEl.textContent = siblingName;
+
+        const pos = document.createElement("div");
+        pos.className = "sibling-position";
+
+        if (index === 0) {
+          pos.textContent = "Oldest sibling";
+        } else if (index === orderedSiblings.length - 1) {
+          pos.textContent = "Youngest sibling";
+        } else {
+          pos.textContent = `${index + 1} of ${orderedSiblings.length}`;
+        }
+
+        main.appendChild(nameEl);
+        main.appendChild(pos);
+
+        button.appendChild(rank);
+        button.appendChild(main);
+
+        if (index === 0) {
+          const badge = document.createElement("span");
+          badge.className = "sibling-badge oldest";
+          badge.textContent = "Oldest";
+          button.appendChild(badge);
+        }
+
+        if (index === orderedSiblings.length - 1) {
+          const badge = document.createElement("span");
+          badge.className = "sibling-badge youngest";
+          badge.textContent = "Youngest";
+          button.appendChild(badge);
+        }
+
+        const panel = document.createElement("div");
+        panel.className = "branch-panel";
+
+        const panelTitle = document.createElement("div");
+        panelTitle.className = "level-title";
+        panelTitle.textContent = `${siblingName}'s branch`;
+        panel.appendChild(panelTitle);
+
+        const content = document.createElement("div");
+        content.className = "simple-tree";
+
+        if (children.length) {
+          addLevel(content, "Children", children);
+
+          const grandchildren = [];
+          children.forEach(childName => {
+            const child = findPersonByName(childName);
+            if (child && child.children && child.children.length) {
+              child.children.forEach(grandchild => grandchildren.push(grandchild));
+            }
+          });
+
+          if (grandchildren.length) {
+            addLevel(content, "Grandchildren", grandchildren);
+          } else {
+            const empty = document.createElement("div");
+            empty.className = "empty-card";
+            empty.textContent = "No grandchildren are linked in the original data for this branch.";
+            content.appendChild(empty);
+          }
+        } else {
+          const empty = document.createElement("div");
+          empty.className = "empty-card";
+          empty.textContent = "No children are linked in the original data for this branch.";
+          content.appendChild(empty);
+        }
+
+        panel.appendChild(content);
+        branchBlocks.push(panel);
+
+        button.addEventListener("click", () => {
+          const isOpening = !panel.classList.contains("open");
+          branchBlocks.forEach(block => block.classList.remove("open"));
+          if (isOpening) panel.classList.add("open");
+        });
+
+        item.appendChild(button);
+        item.appendChild(panel);
+        list.appendChild(item);
+      });
+
+      listWrap.appendChild(list);
+      wrapper.appendChild(listWrap);
+    }
+
+    function renderPersonalIntro() {
+      customTree.innerHTML = `
+        <h2>Personal Tree Search</h2>
+        <p class="note">Type a name above to build a smaller personal tree from the original data.</p>
+        <div class="simple-tree">
+          <div class="empty-card">Example: typing Lauren Dwyer will build Lauren's personal tree from the family relationships already in your data.</div>
+        </div>
+      `;
+    }
+
+    function renderPersonalTreeFromInput() {
+      const typedName = document.getElementById("personalNameInput").value.trim();
+      const matches = findPersonalSearchMatches(typedName);
+
+      if (matches.length > 1) {
+        renderPersonalChoiceList(typedName, matches);
+        return;
+      }
+
+      if (matches.length === 1) {
+        renderPersonalTree(matches[0].person);
+        return;
+      }
+
+      const person = findPersonByName(typedName);
+
+      if (!person) {
+        customTree.innerHTML = `
+          <h2>Personal Tree Search</h2>
+          <p class="note">No matching person was found in the original data for "${typedName}".</p>
+          <div class="simple-tree">
+            <div class="empty-card">Try using a first name or the exact name shown on the main tree.</div>
+          </div>
+        `;
+        return;
+      }
+
+      renderPersonalTree(person);
+    }
+
+    function getGenerationLabel(distanceFromPerson) {
+      if (distanceFromPerson === 1) return "Parents";
+      if (distanceFromPerson === 2) return "Grandparents";
+      if (distanceFromPerson === 3) return "Great-grandparents";
+      return `${"Great-".repeat(distanceFromPerson - 2)}grandparents`;
+    }
+
+    function getAncestorGenerations(person) {
+      const generations = [];
+      let current = person && person.parents ? [...person.parents] : [];
+      const seen = new Set();
+
+      while (current.length) {
+        const uniqueCurrent = [];
+        current.forEach(name => {
+          const key = normalizeName(name);
+          if (key && !seen.has(key)) {
+            seen.add(key);
+            uniqueCurrent.push(name);
+          }
+        });
+
+        if (!uniqueCurrent.length) break;
+        generations.push(uniqueCurrent);
+
+        const next = [];
+        uniqueCurrent.forEach(name => {
+          const ancestor = findPersonByName(name);
+          if (ancestor && ancestor.parents && ancestor.parents.length) {
+            ancestor.parents.forEach(parentName => next.push(parentName));
+          }
+        });
+
+        current = next;
+      }
+
+      return generations;
+    }
+
+    function renderPersonalTree(person) {
+      const ancestorGenerations = getAncestorGenerations(person);
+
+      customTree.innerHTML = "";
+
+      const heading = document.createElement("h2");
+      heading.textContent = `${displayName(person)}'s Personal Tree`;
+      customTree.appendChild(heading);
+
+      const note = document.createElement("p");
+      note.className = "note";
+      note.textContent = "This is your own personal tree, built only from relationships already written in the original data. It follows parents, grandparents, great-grandparents, and further ancestors where they are available.";
+      customTree.appendChild(note);
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "simple-tree";
+      customTree.appendChild(wrapper);
+
+      for (let i = ancestorGenerations.length - 1; i >= 0; i--) {
+        const distanceFromPerson = i + 1;
+        addLevel(wrapper, getGenerationLabel(distanceFromPerson), ancestorGenerations[i]);
+      }
+
+      addLevel(wrapper, "You", [person]);
+
+      if (person.siblings && person.siblings.length) {
+        addLevel(wrapper, "Siblings", person.siblings);
+      }
+
+      if (person.children && person.children.length) {
+        addLevel(wrapper, "Children", person.children);
+      }
+    }
+
+    function fillList(headingId, listId, items) {
+      const heading = document.getElementById(headingId);
+      const list = document.getElementById(listId);
+
+      if (items && items.length) {
+        heading.style.display = "block";
+        list.style.display = "block";
+        list.innerHTML = items.map(item => `<li>${item}</li>`).join("");
+      } else {
+        heading.style.display = "none";
+        list.style.display = "none";
+        list.innerHTML = "";
+      }
+    }
+
+    function openModal(person) {
+      const name = displayName(person);
+
+      document.getElementById("modalName").textContent = person.alsoKnownAs
+        ? `${name} / ${person.alsoKnownAs}`
+        : name;
+
+      const fields = [
+        ["Birthday", person.birthday || defaultProfile.birthday],
+        ["Born in", person.bornIn || defaultProfile.bornIn],
+        ["Age when married", person.ageWhenMarried || defaultProfile.ageWhenMarried],
+        ["Marriage date", person.marriageDate || defaultProfile.marriageDate],
+        ["Lived", person.lived || defaultProfile.lived],
+        ["Death date", person.death || defaultProfile.death],
+        ["Death location", person.deathLocation || defaultProfile.deathLocation],
+        ["Death reason", person.deathReason || defaultProfile.deathReason],
+        ["Occupation", person.occupation || defaultProfile.occupation]
+      ];
+
+      document.getElementById("detailsGrid").innerHTML = fields.map(([label, value]) => `
+        <div class="detail">
+          <span class="label">${label}</span>
+          <span class="value">${value}</span>
+        </div>
+      `).join("");
+
+      fillList("parentsHeading", "parentsList", person.parents);
+      fillList("spouseHeading", "spouseList", person.spouse ? [person.spouse] : []);
+      fillList("siblingsHeading", "siblingsList", person.siblings);
+      fillList("childrenHeading", "childrenList", person.children);
+
+      const records = person.records || [];
+
+      document.getElementById("recordsList").innerHTML = records.length
+        ? records.map(record => `<li><a href="${record.url}" target="_blank" rel="noopener noreferrer">${record.label}</a></li>`).join("")
+        : `<li>No records added yet.</li>`;
+
+      document.getElementById("modalBackdrop").classList.add("open");
+    }
+
+    function closeModal() {
+      document.getElementById("modalBackdrop").classList.remove("open");
+    }
+
+    document.getElementById("modalBackdrop").addEventListener("click", event => {
+      if (event.target.id === "modalBackdrop") closeModal();
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeModal();
+      if (event.key === "Enter" && document.activeElement.id === "personalNameInput") {
+        renderPersonalTreeFromInput();
+      }
+    });
+
+    renderPeople();
+    requestAnimationFrame(fitTreeToViewport);
+    window.addEventListener("resize", fitTreeToViewport);
+  </script>
+</body>
+</html>
