@@ -121,6 +121,38 @@
       font-family: Arial, sans-serif;
     }
 
+    .zoom-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-family: Arial, sans-serif;
+    }
+
+    .zoom-controls button {
+      border: 2px solid var(--brown);
+      background: #fffdf9;
+      color: var(--brown-dark);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      min-width: 44px;
+    }
+
+    .zoom-controls button:hover {
+      background: var(--brown);
+      color: #fffdf9;
+    }
+
+    #zoomLabel {
+      min-width: 72px;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
     .viewport {
       width: 100vw;
       overflow: auto;
@@ -614,6 +646,13 @@
       <input id="personalNameInput" type="text" placeholder="Type your name, e.g. Lauren Dwyer" />
       <button type="button" onclick="renderPersonalTreeFromInput()">Show Personal Tree</button>
       <p class="hint">This only uses names and relationships already in the original data.</p>
+    </div>
+
+    <div class="zoom-controls" id="zoomControls" aria-label="Main tree zoom controls">
+      <button type="button" onclick="zoomTreeOut()">−</button>
+      <span id="zoomLabel">100%</span>
+      <button type="button" onclick="zoomTreeIn()">+</button>
+      <button type="button" onclick="resetTreeZoom()">Reset</button>
     </div>
   </nav>
 
@@ -1240,6 +1279,11 @@
     const tree = document.getElementById("tree");
     const customTree = document.getElementById("customTree");
     const searchPanel = document.getElementById("searchPanel");
+    const zoomControls = document.getElementById("zoomControls");
+    const zoomLabel = document.getElementById("zoomLabel");
+
+    let treeZoom = 1;
+    let baseTreeScale = 1;
 
     function cleanName(value) {
       return String(value || "")
@@ -1290,23 +1334,53 @@
         const isPhoneSize = window.innerWidth <= 900;
 
         if (isPhoneSize) {
-          /* On phones, do NOT shrink the whole 4300px tree.
-             Shrinking makes the name text unreadable on iPhones.
-             Instead, keep the tree full-size and let users pan/zoom around it. */
-          treeWrap.style.transform = "none";
+          /* On phones, keep the full-size 4300px tree so users can pan around it.
+             The +/- buttons below also work, and Safari/Chrome pinch zoom is allowed. */
+          baseTreeScale = 1;
           viewport.style.height = "75vh";
           viewport.style.justifyContent = "flex-start";
         } else {
-          const scale = window.innerWidth / 4300;
-          treeWrap.style.transform = `scale(${scale})`;
-          viewport.style.height = `${2350 * scale}px`;
+          baseTreeScale = window.innerWidth / 4300;
           viewport.style.justifyContent = "center";
         }
+
+        applyTreeZoom();
       } else {
         treeWrap.style.transform = "scale(1)";
         viewport.style.height = "auto";
         viewport.style.justifyContent = "center";
       }
+    }
+
+    function applyTreeZoom() {
+      const treeWrap = document.querySelector(".tree-wrap");
+      const viewport = document.querySelector(".viewport");
+      const scale = baseTreeScale * treeZoom;
+
+      treeWrap.style.transform = `scale(${scale})`;
+
+      if (window.innerWidth > 900) {
+        viewport.style.height = `${2350 * scale}px`;
+      } else {
+        viewport.style.height = "75vh";
+      }
+
+      zoomLabel.textContent = `${Math.round(treeZoom * 100)}%`;
+    }
+
+    function zoomTreeIn() {
+      treeZoom = Math.min(2.5, Math.round((treeZoom + 0.1) * 10) / 10);
+      applyTreeZoom();
+    }
+
+    function zoomTreeOut() {
+      treeZoom = Math.max(0.5, Math.round((treeZoom - 0.1) * 10) / 10);
+      applyTreeZoom();
+    }
+
+    function resetTreeZoom() {
+      treeZoom = 1;
+      fitTreeToViewport();
     }
 
     function findPersonByName(name) {
@@ -1493,6 +1567,7 @@
       closeModal();
       customTree.innerHTML = "";
       searchPanel.classList.toggle("open", view === "personal");
+      zoomControls.style.display = view === "main" ? "flex" : "none";
 
       if (view === "main") {
         tree.classList.add("active");
